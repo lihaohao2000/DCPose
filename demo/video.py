@@ -16,12 +16,17 @@ from utils.utils_folder import list_immediate_childfile_paths, create_folder
 from utils.utils_video import video2images, image2video
 from utils.utils_image import read_image, save_image
 from utils.utils_json import write_json_to_file
-from engine.core.vis_helper import add_poseTrack_joint_connection_to_image, add_bbox_in_image
+from engine.core.vis_helper import add_poseTrack_joint_connection_to_image, add_bbox_in_image, add_num_joint_connection_to_image
+from . import pucount
 
 zero_fill = 8
 
 logger = logging.getLogger(__name__)
 
+pullUpsNum = 0
+pullUpsCal = [135,135,135]
+pullUpsFLAG = 0
+pullUpState = 1 # 1 means up, 0 means down
 
 def main():
     video()
@@ -31,17 +36,19 @@ def video():
     logger.info("Start")
     base_video_path = "./input"
     base_img_vis_save_dirs = './output/vis_img'
+    base_img_num_save_dirs = './output/num_img'
     json_save_base_dirs = './output/json'
     create_folder(json_save_base_dirs)
     video_list = list_immediate_childfile_paths(base_video_path, ext=['mp3', 'mp4'])
     input_image_save_dirs = []
-    SAVE_JSON = True
+    SAVE_JSON = False
     SAVE_VIS_VIDEO = True
     SAVE_VIS_IMAGE = True
     SAVE_BOX_IMAGE = True
+    SAVE_NUM_IMAGE = True
     base_img_vis_box_save_dirs = './output/vis_img_box'
     # 1.Split the video into images
-
+    print("1.Split the video into images")
     for video_path in tqdm(video_list):
         video_name = osp.basename(video_path)
         temp = video_name.split(".")[0]
@@ -57,6 +64,7 @@ def video():
         video2images(video_path, image_save_path)  # jpg
 
     # 2. Person Instance detection
+    print("2. Person Instance detection")
     logger.info("Person Instance detection in progress ...")
     video_candidates = {}
     for index, images_dir in tqdm(enumerate(input_image_save_dirs)):
@@ -75,7 +83,9 @@ def video():
         video_candidates[video_name] = {"candidates_list": video_candidates_list,
                                         "length": len(image_list)}
     logger.info("Person Instance detection finish")
+
     # 3. Singe Person Pose Estimation
+    print("3. Singe Person Pose Estimation")
     logger.info("Single person pose estimation in progress ...")
     for video_name, video_info in video_candidates.items():
         video_candidates_list = video_info["candidates_list"]
@@ -84,7 +94,7 @@ def video():
         for person_info in tqdm(video_candidates_list):
             image_path = person_info["image_path"]
             xywh_box = person_info["bbox"]
-            print(os.path.basename(image_path))
+            #print(os.path.basename(image_path))
             image_idx = int(os.path.basename(image_path).replace(".jpg", ""))
             # from
             prev_idx, next_id = image_idx - 1, image_idx + 1
@@ -105,13 +115,33 @@ def video():
 
             # posetrack points
             new_coord = coco2posetrack_ord_infer(keypoints[0])
+
+            # print("-------------------------------------------------------")
+            global pullUpsNum
+            pullUpsNum += pucount.pullUpCount(new_coord)
+            # print("pullUpsNum:")
+            # print(pullUpsNum)
+            # print("pullUpState:")
+            # print(pullUpState)
+
             # pose
+            if SAVE_NUM_IMAGE:
+                image_save_path = os.path.join(os.path.join(base_img_num_save_dirs, video_name), image_path.split("/")[-1])
+                if osp.exists(image_save_path):
+                    current_image = read_image(image_save_path)
+                else:
+                    current_image = read_image(image_path)
+                num_img = add_num_joint_connection_to_image(current_image, pullUpsNum, np.mean(pullUpsCal))
+                save_image(image_save_path, num_img)
+
             if SAVE_VIS_IMAGE:
                 image_save_path = os.path.join(os.path.join(base_img_vis_save_dirs, video_name), image_path.split("/")[-1])
                 if osp.exists(image_save_path):
                     current_image = read_image(image_save_path)
                 else:
                     current_image = read_image(image_path)
+                if SAVE_NUM_IMAGE:
+                    current_image = read_image(os.path.join(os.path.join(base_img_num_save_dirs, video_name), image_path.split("/")[-1]))
                 pose_img = add_poseTrack_joint_connection_to_image(current_image, new_coord, sure_threshold=0.3, flag_only_draw_sure=True)
                 save_image(image_save_path, pose_img)
 
