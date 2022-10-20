@@ -1,7 +1,19 @@
 import numpy as np
 import math
 
-def pullUpCount(new_coord,pullUpsCal,pullUpsFLAG,pullUpState):
+
+pullUpsNum = 0
+pullUpsCal = [90,90,90]
+pullUpsFLAG = 0
+pullUpState = 3 # 1 means up, 0 means down, 3 means default , 4 means foul
+
+def init():
+    pullUpsNum = 0
+    pullUpsCal = [90,90,90]
+    pullUpsFLAG = 0
+    pullUpState = 3
+
+def pushUpCountByElbow(new_coord,pullUpsCal,pullUpsFLAG,pullUpState):
     v1 = [new_coord[7][0],new_coord[7][1],new_coord[6][0],new_coord[6][1]]
     v2 = [new_coord[7][0],new_coord[7][1],new_coord[8][0],new_coord[8][1]]
     v3 = [new_coord[10][0],new_coord[10][1],new_coord[9][0],new_coord[9][1]]
@@ -25,7 +37,41 @@ def pullUpCount(new_coord,pullUpsCal,pullUpsFLAG,pullUpState):
     if(pullUpState == 1 and ave <= 100):
         pullUpState = 0
         return 1
-    if(pullUpState == 0 and ave >= 150):
+    if((pullUpState == 0 or pullUpState == 3) and ave >= 150):
+        pullUpState = 1
+    return 0
+
+
+def pushUpCountByTrunk(new_coord):
+    global pullUpsCal, pullUpsFLAG, pullUpState
+    v1 = [new_coord[0][0],new_coord[0][1],new_coord[8][0],new_coord[8][1]]
+    v2 = [new_coord[0][0],new_coord[0][1],new_coord[6][0],new_coord[6][1]]
+    v3 = [new_coord[5][0],new_coord[5][1],new_coord[9][0],new_coord[9][1]]
+    v4 = [new_coord[5][0],new_coord[5][1],new_coord[11][0],new_coord[11][1]]
+    rightAngle = angle(v1,v2)
+    leftAngle = angle(v3,v4)
+    # averageAngle = (leftAngle + rightAngle) / 2
+    if new_coord[12][0] < new_coord[2][0]:#left
+        averageAngle = leftAngle
+    else:#right
+        averageAngle = rightAngle
+    # print("rightAngle:")
+    # print(rightAngle)
+    # print("leftAngle:")
+    # print(leftAngle)
+    # print("averageAngle:")
+    # print(averageAngle)
+    pullUpsCal[pullUpsFLAG % 3] = averageAngle
+    pullUpsFLAG = pullUpsFLAG + 1
+    if(pullUpsFLAG >= 3):
+        pullUpsFLAG = 0
+    ave = np.mean(pullUpsCal)
+    # print("real:")
+    # print(ave)
+    if(pullUpState == 1 and ave <= 15):
+        pullUpState = 0
+        return 1
+    if((pullUpState == 0 or pullUpState == 3) and ave >= 21):
         pullUpState = 1
     return 0
 
@@ -48,4 +94,3 @@ def angle(v1, v2):
     if included_angle > 180:
       included_angle = 360 - included_angle
   return included_angle
-

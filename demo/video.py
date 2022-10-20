@@ -3,6 +3,7 @@
 import os
 import os.path as osp
 import sys
+import numpy as np
 
 sys.path.insert(0, osp.abspath('../'))
 
@@ -17,16 +18,13 @@ from utils.utils_video import video2images, image2video
 from utils.utils_image import read_image, save_image
 from utils.utils_json import write_json_to_file
 from engine.core.vis_helper import add_poseTrack_joint_connection_to_image, add_bbox_in_image, add_num_joint_connection_to_image
-from . import pucount
+from demo import pucount, csvwriter, inspection
+
 
 zero_fill = 8
 
 logger = logging.getLogger(__name__)
 
-pullUpsNum = 0
-pullUpsCal = [135,135,135]
-pullUpsFLAG = 0
-pullUpState = 1 # 1 means up, 0 means down
 
 def main():
     video()
@@ -37,11 +35,12 @@ def video():
     base_video_path = "./input"
     base_img_vis_save_dirs = './output/vis_img'
     base_img_num_save_dirs = './output/num_img'
+    base_csv_save_dirs = './output/csv'
     json_save_base_dirs = './output/json'
     create_folder(json_save_base_dirs)
     video_list = list_immediate_childfile_paths(base_video_path, ext=['mp3', 'mp4'])
     input_image_save_dirs = []
-    SAVE_JSON = False
+    SAVE_JSON = True
     SAVE_VIS_VIDEO = True
     SAVE_VIS_IMAGE = True
     SAVE_BOX_IMAGE = True
@@ -88,12 +87,18 @@ def video():
     print("3. Singe Person Pose Estimation")
     logger.info("Single person pose estimation in progress ...")
     for video_name, video_info in video_candidates.items():
+        csv_list = [['Time','Angle', 'wh', 'truckDetection0', 'truckDetection1', 'disshankle']]
+        csv_time = 1
+        pucount.init()
+        inspection.init()
+        pullUpsNum = 0
         video_candidates_list = video_info["candidates_list"]
         video_length = video_info["length"]
         prev_image_id = None
         for person_info in tqdm(video_candidates_list):
             image_path = person_info["image_path"]
             xywh_box = person_info["bbox"]
+
             #print(os.path.basename(image_path))
             image_idx = int(os.path.basename(image_path).replace(".jpg", ""))
             # from
@@ -116,13 +121,20 @@ def video():
             # posetrack points
             new_coord = coco2posetrack_ord_infer(keypoints[0])
 
-            # print("-------------------------------------------------------")
-            global pullUpsNum
-            pullUpsNum += pucount.pullUpCount(new_coord)
-            # print("pullUpsNum:")
-            # print(pullUpsNum)
-            # print("pullUpState:")
-            # print(pullUpState)
+            
+            #Poseture and perspective inspection and count
+            wh = xywh_box[2]/xywh_box[3] # width / height needed to larger than 1.6 as
+            td = inspection.truckDetection(new_coord)
+            sd = inspection.shankleDetection(new_coord)
+            if wh > 1.6 and td and sd:
+                if pucount.pullUpState == 4:
+                    pucount.pullUpState = 3
+                pullUpsNum += pucount.pushUpCountByTrunk(new_coord)
+            else:
+                pucount.pullUpState = 4
+            
+            csv_list.append([csv_time, np.mean(pucount.pullUpsCal), wh, np.mean(inspection.truckDetectionCal[0]), np.mean(inspection.truckDetectionCal[1]), np.mean(inspection.disshankleCal)])
+            csv_time = csv_time + 1
 
             # pose
             if SAVE_NUM_IMAGE:
@@ -131,7 +143,11 @@ def video():
                     current_image = read_image(image_save_path)
                 else:
                     current_image = read_image(image_path)
-                num_img = add_num_joint_connection_to_image(current_image, pullUpsNum, np.mean(pullUpsCal))
+                # addtext = "Push-Ups:{pullUpsNum}\nAveAngle:{pullUpsCal}\nWh:{wh}\nTd0:{truckDetectionCal0}\nTD1:{truckDetectionCal1}\nDisshankleCal:{disshankleCal}".format(pullUpsNum=str(pullUpsNum),pullUpsCal=str(np.mean(pucount.pullUpsCal)),wh=str(wh),truckDetectionCal0=str(np.mean(inspection.truckDetectionCal[0])),truckDetectionCal1=str(np.mean(inspection.truckDetectionCal[1])),disshankleCal=str(np.mean(inspection.disshankleCal)))
+                addtext = "Push-Ups:{pullUpsNum}".format(pullUpsNum=str(pullUpsNum))
+                if pucount.pullUpState == 4:
+                    addtext += "\nFOUL"
+                num_img = add_num_joint_connection_to_image(current_image, addtext)
                 save_image(image_save_path, num_img)
 
             if SAVE_VIS_IMAGE:
@@ -164,6 +180,9 @@ def video():
         if SAVE_VIS_VIDEO:
             image2video(os.path.join(base_img_vis_save_dirs, video_name), video_name)
             print("------->Complete!")
+        
+        image_save_path = os.path.join(base_csv_save_dirs, video_name) + ".csv"
+        csvwriter.writecsv(csv_list,image_save_path)
 
 
 if __name__ == '__main__':

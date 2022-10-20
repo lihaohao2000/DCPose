@@ -102,3 +102,33 @@ def circle_vis_point(img, joints):
         cv2.circle(img, (x, y), 3, (255, 255, 255), thickness=3)
 
     return img
+
+
+def add_num_joint_connection_to_image(img, text):
+    fontFace = cv2.FONT_HERSHEY_COMPLEX_SMALL
+    fontScale = 0.75
+    fontThickness = 1
+    color = (255,0,0)
+    imageWidth  = img.shape[0]
+    imageHeight  = img.shape[1]
+    if imageWidth > 500:
+        fontScale = 2
+        fontThickness = 2
+    elif imageWidth > 1000:
+        fontScale = 3
+        fontThickness = 3
+    upperLeftTextOriginX = int(imageWidth * 0.05)
+    upperLeftTextOriginY = int(imageHeight * 0.05)
+    textSize, baseline = cv2.getTextSize(text, fontFace, fontScale, fontThickness)
+    textSizeWidth, textSizeHeight = textSize
+    lowerLeftTextOriginX = upperLeftTextOriginX
+    lowerLeftTextOriginY = upperLeftTextOriginY + textSizeHeight
+    org = (lowerLeftTextOriginX,lowerLeftTextOriginY)
+
+    y0, dy = lowerLeftTextOriginY, int(textSizeHeight*1.2)
+    for i, txt in enumerate(text.split('\n')):
+        y = y0+i*dy
+        cv2.putText(img, txt, (lowerLeftTextOriginX, y), fontFace,  fontScale, color, fontThickness)
+    # cv2.putText(img, text, org, fontFace, fontScale, color, fontThickness)
+
+    return img
