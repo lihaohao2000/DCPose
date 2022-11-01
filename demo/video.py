@@ -18,7 +18,6 @@ from utils.utils_video import video2images, image2video
 from utils.utils_image import read_image, save_image
 from utils.utils_json import write_json_to_file
 from engine.core.vis_helper import add_poseTrack_joint_connection_to_image, add_bbox_in_image, add_num_joint_connection_to_image
-from demo import pucount, csvwriter, inspection
 
 
 zero_fill = 8
@@ -87,11 +86,6 @@ def video():
     print("3. Singe Person Pose Estimation")
     logger.info("Single person pose estimation in progress ...")
     for video_name, video_info in video_candidates.items():
-        csv_list = [['Time','Angle', 'wh', 'truckDetection0', 'truckDetection1', 'disshankle']]
-        csv_time = 1
-        pucount.init()
-        inspection.init()
-        pullUpsNum = 0
         video_candidates_list = video_info["candidates_list"]
         video_length = video_info["length"]
         prev_image_id = None
@@ -122,33 +116,21 @@ def video():
             new_coord = coco2posetrack_ord_infer(keypoints[0])
 
             
-            #Poseture and perspective inspection and count
-            wh = xywh_box[2]/xywh_box[3] # width / height needed to larger than 1.6 as
-            td = inspection.truckDetection(new_coord)
-            sd = inspection.shankleDetection(new_coord)
-            if wh > 1.6 and td and sd:
-                if pucount.pullUpState == 4:
-                    pucount.pullUpState = 3
-                pullUpsNum += pucount.pushUpCountByTrunk(new_coord)
-            else:
-                pucount.pullUpState = 4
+            #HAR
             
-            csv_list.append([csv_time, np.mean(pucount.pullUpsCal), wh, np.mean(inspection.truckDetectionCal[0]), np.mean(inspection.truckDetectionCal[1]), np.mean(inspection.disshankleCal)])
-            csv_time = csv_time + 1
+
 
             # pose
-            if SAVE_NUM_IMAGE:
-                image_save_path = os.path.join(os.path.join(base_img_num_save_dirs, video_name), image_path.split("/")[-1])
-                if osp.exists(image_save_path):
-                    current_image = read_image(image_save_path)
-                else:
-                    current_image = read_image(image_path)
-                # addtext = "Push-Ups:{pullUpsNum}\nAveAngle:{pullUpsCal}\nWh:{wh}\nTd0:{truckDetectionCal0}\nTD1:{truckDetectionCal1}\nDisshankleCal:{disshankleCal}".format(pullUpsNum=str(pullUpsNum),pullUpsCal=str(np.mean(pucount.pullUpsCal)),wh=str(wh),truckDetectionCal0=str(np.mean(inspection.truckDetectionCal[0])),truckDetectionCal1=str(np.mean(inspection.truckDetectionCal[1])),disshankleCal=str(np.mean(inspection.disshankleCal)))
-                addtext = "Push-Ups:{pullUpsNum}".format(pullUpsNum=str(pullUpsNum))
-                if pucount.pullUpState == 4:
-                    addtext += "\nFOUL"
-                num_img = add_num_joint_connection_to_image(current_image, addtext)
-                save_image(image_save_path, num_img)
+            # if SAVE_NUM_IMAGE:
+            #     image_save_path = os.path.join(os.path.join(base_img_num_save_dirs, video_name), image_path.split("/")[-1])
+            #     if osp.exists(image_save_path):
+            #         current_image = read_image(image_save_path)
+            #     else:
+            #         current_image = read_image(image_path)
+            #     # addtext = "Push-Ups:{pullUpsNum}\nAveAngle:{pullUpsCal}\nWh:{wh}\nTd0:{truckDetectionCal0}\nTD1:{truckDetectionCal1}\nDisshankleCal:{disshankleCal}".format(pullUpsNum=str(pullUpsNum),pullUpsCal=str(np.mean(pucount.pullUpsCal)),wh=str(wh),truckDetectionCal0=str(np.mean(inspection.truckDetectionCal[0])),truckDetectionCal1=str(np.mean(inspection.truckDetectionCal[1])),disshankleCal=str(np.mean(inspection.disshankleCal)))
+            #     addtext = "Push-Ups:{pullUpsNum}".format(pullUpsNum=str(pullUpsNum))
+            #     num_img = add_num_joint_connection_to_image(current_image, addtext)
+            #     save_image(image_save_path, num_img)
 
             if SAVE_VIS_IMAGE:
                 image_save_path = os.path.join(os.path.join(base_img_vis_save_dirs, video_name), image_path.split("/")[-1])
@@ -180,9 +162,6 @@ def video():
         if SAVE_VIS_VIDEO:
             image2video(os.path.join(base_img_vis_save_dirs, video_name), video_name)
             print("------->Complete!")
-        
-        image_save_path = os.path.join(base_csv_save_dirs, video_name) + ".csv"
-        csvwriter.writecsv(csv_list,image_save_path)
 
 
 if __name__ == '__main__':
