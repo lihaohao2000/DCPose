@@ -46,14 +46,14 @@ Your extracted PoseTrack18 images directory should look like this:
 ```
 ${Human Action Recognition Algorithm in Dark Environment Based on DCPose_DIR}
     |--demo
-		|--input
-			|-- test
-			`-- train
+        |--input
+            |-- test
+            `-- train
                 |--{type 1}
                 `--{type 2}
                 ......
-			`-- val
-			`-- predict
+            `-- val
+            `-- predict
 ```
 Predict input video in predict folder.
 ```
