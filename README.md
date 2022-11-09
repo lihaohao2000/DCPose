@@ -9,13 +9,13 @@ The human pose estimation mAP of the network on the PoseTrack2018 dataset reache
 
 
 <p align='center'>
-	<img src=".docs/images/network structure.png" style="zoom:100%;" />
+	<img src="docs\images\network structure.png" style="zoom:100%;" />
 </p>
 
 ## Experiment Results
 
 <p align='center'>
-	<img src=".docs/images/Mean Average Precision by Epochs.png" style="zoom:100%;" />
+	<img src="docs/images/Mean Average Precision by Epochs.png" style="zoom:100%;" />
 </p>
 
 ## Installation & Quick Start
