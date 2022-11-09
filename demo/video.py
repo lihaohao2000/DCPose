@@ -4,7 +4,6 @@ import os
 import os.path as osp
 import sys
 import torch
-from torchvision import transforms
 
 sys.path.insert(0, osp.abspath('../'))
 
@@ -21,7 +20,7 @@ from demo.mlp import MLP
 from demo.save_pose import save_pose, load_pose
 
 ues_cached_pose = None #"./posedata_cached/pose_cache.pickle"
-use_cached_model = "m-1667541321.6601925-epoch267-0.0004.pth"
+use_cached_model = None #"m-1667541321.6601925-epoch267-0.0004.pth"
 
 zero_fill = 8
 sample_max = 50
@@ -232,8 +231,7 @@ def train_mlp(train_pose_estimatated_list, train_HAR_label_list, test_pose_estim
     if use_cached_model is not None:
         logger.info("Use cached model.")
         model.load_checkpoint(subpath=use_cached_model)
-    # model.train()
-    model.test()
+    model.train()
 
 
 def changeCoord(old_corrd):
@@ -244,16 +242,6 @@ def changeCoord(old_corrd):
         new_coord.append([item[0]-tempx,item[1]-tempy])
     new_coord.pop()
     return new_coord
-
-            
-                    
-
-        
-
-     
-            
-
-        
 
 
 if __name__ == '__main__':

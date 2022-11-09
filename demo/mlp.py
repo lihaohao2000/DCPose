@@ -3,7 +3,7 @@ import time
 import pandas as pd
 
 class MLP(torch.nn.Module):
-    def __init__(self, n_epochs, train_loader, test_loader, checkpoint_path):
+    def __init__(self, n_epochs=0, train_loader=None, test_loader=None, checkpoint_path=None):
         super(MLP,self).__init__()
         self.checkpoint_path = checkpoint_path
         self.n_epochs = n_epochs
@@ -72,4 +72,4 @@ class MLP(torch.nn.Module):
     def load_checkpoint(self, subpath):
         model_CKPT = torch.load(self.checkpoint_path+"/"+subpath)
         self.load_state_dict(model_CKPT['state_dict'])
-        print('loading checkpoint!')
+        print('loaded checkpoint')
